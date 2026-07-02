@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Organizers: solo el propio org puede leer/editar
+    match /organizers/{orgId} {
+      allow read, write: if request.auth != null && request.auth.uid == orgId;
+    }
+
+    // Events: el org propietario puede escribir; cualquiera puede leer eventos publicados
+    match /events/{eventId} {
+      allow read: if resource.data.status == 'published' ||
+                    (request.auth != null && request.auth.uid == resource.data.orgId);
+      allow create: if request.auth != null && request.resource.data.orgId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.orgId == request.auth.uid;
+    }
+
+    // Orders: solo backend (admin SDK) escribe; el comprador puede leer la suya por email
+    match /orders/{orderId} {
+      allow read: if request.auth != null && resource.data.orgId == request.auth.uid;
+      allow write: if false; // solo admin SDK
+    }
+
+    // Tickets: el org puede leer los suyos; el comprador accede por ID directo (pública)
+    match /tickets/{ticketId} {
+      allow read: if true; // la URL del ticket es el acceso
+      allow write: if false; // solo admin SDK
+    }
+
+    // Validation sessions: el org puede leer/crear
+    match /validationSessions/{sessionId} {
+      allow read: if request.auth != null && resource.data.orgId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.orgId == request.auth.uid;
+      allow write: if false;
+    }
+  }
+}
