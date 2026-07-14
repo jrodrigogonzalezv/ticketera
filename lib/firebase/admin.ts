@@ -15,6 +15,17 @@ function getAdminApp(): App {
   });
 }
 
-export const adminDb = getFirestore(getAdminApp());
-export const adminStorage = getStorage(getAdminApp());
-export const adminAuth = getAuth(getAdminApp());
+export function getAdminDb() { return getFirestore(getAdminApp()); }
+export function getAdminStorage() { return getStorage(getAdminApp()); }
+export function getAdminAuth() { return getAuth(getAdminApp()); }
+
+// Backwards-compat aliases — resolved at call time, not at import time
+export const adminDb = new Proxy({} as ReturnType<typeof getFirestore>, {
+  get(_, prop: string) { return (getAdminDb() as any)[prop]; },
+});
+export const adminStorage = new Proxy({} as ReturnType<typeof getStorage>, {
+  get(_, prop: string) { return (getAdminStorage() as any)[prop]; },
+});
+export const adminAuth = new Proxy({} as ReturnType<typeof getAuth>, {
+  get(_, prop: string) { return (getAdminAuth() as any)[prop]; },
+});
