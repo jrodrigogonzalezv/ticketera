@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminStorage } from '@/lib/firebase/admin';
+
+export const dynamic = 'force-dynamic';
 import { getPayment } from '@/lib/mercadopago/client';
 import { generateQrDataUrl, generateQrToken } from '@/lib/qr/generate';
 import { FieldValue } from 'firebase-admin/firestore';

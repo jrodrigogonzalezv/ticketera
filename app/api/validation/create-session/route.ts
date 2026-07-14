@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebase/admin';
+
+export const dynamic = 'force-dynamic';
 import { FieldValue } from 'firebase-admin/firestore';
 import { createHmac } from 'crypto';
 

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
+
+export const dynamic = 'force-dynamic';
 import { createPreference } from '@/lib/mercadopago/client';
 import { FieldValue } from 'firebase-admin/firestore';
 

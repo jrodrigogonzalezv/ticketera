@@ -1,4 +1,6 @@
 import { adminDb } from '@/lib/firebase/admin';
+
+export const dynamic = 'force-dynamic';
 import { notFound } from 'next/navigation';
 import type { Ticket } from '@/types';
 import type { Event } from '@/types';

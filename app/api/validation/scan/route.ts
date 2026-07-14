@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase/admin';
+
+export const dynamic = 'force-dynamic';
 import { verifyQrToken } from '@/lib/qr/generate';
 import { FieldValue } from 'firebase-admin/firestore';
 
