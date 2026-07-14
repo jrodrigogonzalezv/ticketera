@@ -4,20 +4,11 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
-    "public": ".next",
+    "source": ".",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ],
-    "headers": [
-      {
-        "source": "**/*.@(js|css)",
-        "headers": [{"key": "Cache-Control", "value": "max-age=31536000"}]
-      }
-    ]
+    "frameworksBackend": {
+      "region": "us-central1"
+    }
   },
   "storage": {
     "rules": "storage.rules"
