@@ -69,14 +69,16 @@ export default function EventPublicPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {eventWithExtra.imageUrl && (
+      {eventWithExtra.imageUrl ? (
         <div className="w-full h-72 relative">
           <img src={eventWithExtra.imageUrl} alt={event.title} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         </div>
+      ) : (
+        <div className="w-full h-24 bg-gradient-to-r from-blue-600 to-blue-400" />
       )}
 
-      <div className="max-w-4xl mx-auto px-4 py-8 -mt-16 relative">
+      <div className={`max-w-4xl mx-auto px-4 py-8 relative ${eventWithExtra.imageUrl ? '-mt-16' : 'mt-0'}`}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-2xl p-6 shadow-sm">
