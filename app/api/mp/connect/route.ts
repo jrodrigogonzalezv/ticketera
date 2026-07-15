@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
   }
 
-  const clientId = process.env.MP_CLIENT_ID!;
+  const clientId = process.env.NEXT_PUBLIC_MP_CLIENT_ID || process.env.MP_CLIENT_ID!
   const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL}/api/mp/callback`;
   const authUrl = `https://auth.mercadopago.com/authorization?client_id=${clientId}&response_type=code&platform_id=mp&state=${uid}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 
