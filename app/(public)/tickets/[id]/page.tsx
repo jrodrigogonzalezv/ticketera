@@ -1,33 +1,61 @@
-import { adminDb } from '@/lib/firebase/admin';
+'use client';
 
-export const dynamic = 'force-dynamic';
-import { notFound } from 'next/navigation';
-import type { Ticket } from '@/types';
-import type { Event } from '@/types';
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
+import type { Ticket, Event } from '@/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { MapPin, CalendarDays, Ticket as TicketIcon } from 'lucide-react';
 
-export default async function TicketPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const snap = await adminDb.doc(`tickets/${id}`).get();
-  if (!snap.exists) notFound();
-  const ticket = { id: snap.id, ...snap.data() } as Ticket;
+export default function TicketPage() {
+  const { id } = useParams<{ id: string }>();
+  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [event, setEvent] = useState<(Event & { imageUrl?: string }) | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const eventSnap = await adminDb.doc(`events/${ticket.eventId}`).get();
-  const event = eventSnap.data() as Event;
+  useEffect(() => {
+    async function load() {
+      const snap = await getDoc(doc(db, 'tickets', id));
+      if (!snap.exists()) { setLoading(false); return; }
+      const t = { id: snap.id, ...snap.data() } as Ticket;
+      setTicket(t);
 
-  const eventDate = event?.date ? new Date((event.date as unknown as { seconds: number }).seconds * 1000) : null;
+      const eventSnap = await getDoc(doc(db, 'events', t.eventId));
+      if (eventSnap.exists()) {
+        setEvent({ id: eventSnap.id, ...eventSnap.data() } as Event & { imageUrl?: string });
+      }
+      setLoading(false);
+    }
+    load();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  if (!ticket) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <p className="text-gray-500">Ticket no encontrado.</p>
+      </div>
+    );
+  }
+
+  const eventDate = event?.date
+    ? new Date((event.date as unknown as { seconds: number }).seconds * 1000)
+    : null;
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm overflow-hidden">
-        {(event as Event & { imageUrl?: string })?.imageUrl && (
-          <img
-            src={(event as Event & { imageUrl?: string }).imageUrl}
-            alt={event?.title}
-            className="w-full h-40 object-cover"
-          />
+        {event?.imageUrl && (
+          <img src={event.imageUrl} alt={event?.title} className="w-full h-40 object-cover" />
         )}
 
         <div className="p-6">

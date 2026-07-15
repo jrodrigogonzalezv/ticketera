@@ -2,9 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Organizers: solo el propio org puede leer/editar
+    // Organizers: cualquiera puede leer (datos públicos: nombre, slug, logo); solo el propio org puede editar
     match /organizers/{orgId} {
-      allow read, write: if request.auth != null && request.auth.uid == orgId;
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == orgId;
     }
 
     // Events: el org propietario puede escribir; cualquiera puede leer eventos publicados

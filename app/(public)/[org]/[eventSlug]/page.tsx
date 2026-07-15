@@ -1,43 +1,71 @@
-export const dynamic = 'force-dynamic';
+'use client';
 
-import { adminDb } from '@/lib/firebase/admin';
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 import type { Event, Organizer } from '@/types';
-import { notFound } from 'next/navigation';
 import EventCheckout from './EventCheckout';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { MapPin, CalendarDays, Ticket } from 'lucide-react';
 
-async function getEventBySlug(orgSlug: string, eventSlug: string) {
-  const orgsSnap = await adminDb.collection('organizers').where('slug', '==', orgSlug).get();
-  if (orgsSnap.empty) return null;
-  const organizer = { id: orgsSnap.docs[0].id, ...orgsSnap.docs[0].data() } as Organizer;
+export default function EventPublicPage() {
+  const params = useParams<{ org: string; eventSlug: string }>();
+  const [data, setData] = useState<{ organizer: Organizer; event: Event } | null>(null);
+  const [status, setStatus] = useState<'loading' | 'notfound' | 'ok'>('loading');
 
-  const eventsSnap = await adminDb
-    .collection('events')
-    .where('orgId', '==', organizer.id)
-    .where('slug', '==', eventSlug)
-    .get();
-  if (eventsSnap.empty) return null;
-  const event = { id: eventsSnap.docs[0].id, ...eventsSnap.docs[0].data() } as Event;
+  useEffect(() => {
+    async function load() {
+      const orgsSnap = await getDocs(
+        query(collection(db, 'organizers'), where('slug', '==', params.org))
+      );
+      if (orgsSnap.empty) { setStatus('notfound'); return; }
+      const organizer = { id: orgsSnap.docs[0].id, ...orgsSnap.docs[0].data() } as Organizer;
 
-  return { organizer, event };
-}
+      const eventsSnap = await getDocs(
+        query(
+          collection(db, 'events'),
+          where('orgId', '==', organizer.id),
+          where('slug', '==', params.eventSlug)
+        )
+      );
+      if (eventsSnap.empty) { setStatus('notfound'); return; }
+      const event = { id: eventsSnap.docs[0].id, ...eventsSnap.docs[0].data() } as Event;
 
-export default async function EventPublicPage({
-  params,
-}: {
-  params: Promise<{ org: string; eventSlug: string }>;
-}) {
-  const { org, eventSlug } = await params;
-  const data = await getEventBySlug(org, eventSlug);
+      if (event.status !== 'published') { setStatus('notfound'); return; }
 
-  if (!data || data.event.status !== 'published') notFound();
+      setData({ organizer, event });
+      setStatus('ok');
+    }
+    load();
+  }, [params.org, params.eventSlug]);
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      </div>
+    );
+  }
+
+  if (status === 'notfound' || !data) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-2xl font-bold text-gray-900 mb-2">Evento no encontrado</p>
+          <p className="text-gray-500">El evento no existe o no está disponible.</p>
+        </div>
+      </div>
+    );
+  }
 
   const { organizer, event } = data;
-  const eventDate = event.date ? new Date((event.date as unknown as { seconds: number }).seconds * 1000) : null;
-  const availableTypes = event.ticketTypes.filter((t) => t.sold < t.stock);
   const eventWithExtra = event as Event & { imageUrl?: string; address?: string };
+  const eventDate = event.date
+    ? new Date((event.date as unknown as { seconds: number }).seconds * 1000)
+    : null;
+  const availableTypes = event.ticketTypes.filter((t) => t.sold < t.stock);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -107,18 +135,4 @@ export default async function EventPublicPage({
       </div>
     </div>
   );
-}
-
-export async function generateMetadata({ params }: { params: Promise<{ org: string; eventSlug: string }> }) {
-  const { org, eventSlug } = await params;
-  const data = await getEventBySlug(org, eventSlug);
-  if (!data) return {};
-  const e = data.event as Event & { imageUrl?: string };
-  return {
-    title: e.title,
-    description: e.description?.slice(0, 160),
-    openGraph: {
-      images: e.imageUrl ? [e.imageUrl] : [],
-    },
-  };
 }
