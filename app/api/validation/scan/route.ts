@@ -1,32 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { queryDocs, getDoc, updateDoc, serverTimestamp } from '@/lib/server/firestore';
+import { verifyQrToken } from '@/lib/qr/generate';
 
 export const dynamic = 'force-dynamic';
-import { verifyQrToken } from '@/lib/qr/generate';
-import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(req: NextRequest) {
   try {
     const { qrPayload, sessionToken, eventId } = await req.json();
 
-    // verify session
-    const sessionsSnap = await adminDb
-      .collection('validationSessions')
-      .where('token', '==', sessionToken)
-      .where('eventId', '==', eventId)
-      .limit(1)
-      .get();
+    const sessions = await queryDocs('validationSessions', [
+      { field: 'token', op: 'EQUAL', value: sessionToken },
+      { field: 'eventId', op: 'EQUAL', value: eventId },
+    ]);
 
-    if (sessionsSnap.empty) {
+    if (sessions.length === 0) {
       return NextResponse.json({ valid: false, reason: 'Sesión inválida o expirada' }, { status: 403 });
     }
 
-    const session = sessionsSnap.docs[0].data();
-    if (new Date(session.expiresAt.toDate()) < new Date()) {
+    const session = sessions[0].data;
+    const expiresAt = session.expiresAt instanceof Date ? session.expiresAt : new Date(session.expiresAt as string);
+    if (expiresAt < new Date()) {
       return NextResponse.json({ valid: false, reason: 'Sesión expirada' }, { status: 403 });
     }
 
-    // parse QR
     let parsed: { ticketId: string; eventId: string; token: string };
     try {
       parsed = JSON.parse(qrPayload);
@@ -42,20 +38,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ valid: false, reason: 'QR falsificado o corrupto' });
     }
 
-    const ticketRef = adminDb.doc(`tickets/${parsed.ticketId}`);
-    const ticketSnap = await ticketRef.get();
-
-    if (!ticketSnap.exists) {
+    const ticketDoc = await getDoc(`tickets/${parsed.ticketId}`);
+    if (!ticketDoc?.exists) {
       return NextResponse.json({ valid: false, reason: 'Ticket no encontrado' });
     }
 
-    const ticket = ticketSnap.data()!;
+    const ticket = ticketDoc.data;
 
     if (ticket.status === 'used') {
+      const scannedAt = ticket.scannedAt instanceof Date ? ticket.scannedAt.toISOString() : String(ticket.scannedAt);
       return NextResponse.json({
         valid: false,
         reason: 'Ticket ya utilizado',
-        scannedAt: ticket.scannedAt?.toDate().toISOString(),
+        scannedAt,
         holderName: ticket.holderName,
       });
     }
@@ -64,10 +59,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ valid: false, reason: 'Ticket cancelado' });
     }
 
-    await ticketRef.update({
+    await updateDoc(`tickets/${parsed.ticketId}`, {
       status: 'used',
-      scannedAt: FieldValue.serverTimestamp(),
-      scannedBy: session.validatorEmail || 'validator',
+      scannedAt: serverTimestamp(),
+      scannedBy: (session.validatorEmail as string) || 'validator',
     });
 
     return NextResponse.json({

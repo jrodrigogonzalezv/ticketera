@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase/admin';
+import { updateDoc } from '@/lib/server/firestore';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,10 +26,9 @@ export async function GET(req: NextRequest) {
     });
 
     const data = await res.json();
-
     if (!res.ok) throw new Error(data.message);
 
-    await adminDb.doc(`organizers/${orgId}`).update({
+    await updateDoc(`organizers/${orgId}`, {
       mpAccessToken: data.access_token,
       mpRefreshToken: data.refresh_token,
       mpUserId: String(data.user_id),

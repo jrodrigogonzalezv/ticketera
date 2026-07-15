@@ -1,10 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb, adminStorage } from '@/lib/firebase/admin';
-
-export const dynamic = 'force-dynamic';
+import { getDoc, updateDoc, addDoc, serverTimestamp } from '@/lib/server/firestore';
+import { getAccessToken } from '@/lib/server/gcp-token';
 import { getPayment } from '@/lib/mercadopago/client';
 import { generateQrDataUrl, generateQrToken } from '@/lib/qr/generate';
-import { FieldValue } from 'firebase-admin/firestore';
+
+export const dynamic = 'force-dynamic';
+
+const PROJECT = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID!;
+const BUCKET = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!;
+
+async function uploadQrToStorage(ticketId: string, qrDataUrl: string): Promise<string> {
+  const base64 = qrDataUrl.split(',')[1];
+  const buffer = Buffer.from(base64, 'base64');
+  const token = await getAccessToken();
+  const objectName = encodeURIComponent(`qr/${ticketId}.png`);
+
+  const uploadRes = await fetch(
+    `https://storage.googleapis.com/upload/storage/v1/b/${BUCKET}/o?uploadType=media&name=qr/${ticketId}.png`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'image/png',
+      },
+      body: buffer,
+    }
+  );
+  if (!uploadRes.ok) throw new Error(`Storage upload error: ${uploadRes.status}`);
+
+  // Make public
+  await fetch(
+    `https://storage.googleapis.com/storage/v1/b/${BUCKET}/o/${objectName}/iam`,
+    {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bindings: [{ role: 'roles/storage.objectViewer', members: ['allUsers'] }],
+      }),
+    }
+  );
+
+  return `https://storage.googleapis.com/${BUCKET}/qr/${ticketId}.png`;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,35 +61,31 @@ export async function POST(req: NextRequest) {
     const orderId = payment.external_reference;
     if (!orderId) return NextResponse.json({ received: true });
 
-    const orderRef = adminDb.doc(`orders/${orderId}`);
-    const orderSnap = await orderRef.get();
-    if (!orderSnap.exists) return NextResponse.json({ received: true });
+    const orderDoc = await getDoc(`orders/${orderId}`);
+    if (!orderDoc?.exists) return NextResponse.json({ received: true });
 
-    const order = orderSnap.data()!;
+    const order = orderDoc.data;
 
     if (order.status === 'paid') {
       return NextResponse.json({ received: true });
     }
 
-    await orderRef.update({
+    await updateDoc(`orders/${orderId}`, {
       mpPaymentId: paymentId,
       mpStatus: payment.status,
       status: 'paid',
-      paidAt: FieldValue.serverTimestamp(),
+      paidAt: serverTimestamp(),
     });
 
-    const eventSnap = await adminDb.doc(`events/${order.eventId}`).get();
-    const event = eventSnap.data()!;
+    const eventDoc = await getDoc(`events/${order.eventId}`);
+    const event = eventDoc?.data || {};
+    const ticketTypes = (event.ticketTypes || []) as Array<{ id: string; sold: number }>;
 
-    const batch = adminDb.batch();
-    const ticketIds: string[] = [];
+    const orderItemsList = order.items as Array<{ ticketTypeId: string; ticketTypeName: string; qty: number }>;
 
-    for (const item of order.items) {
+    for (const item of orderItemsList) {
       for (let i = 0; i < item.qty; i++) {
-        const ticketRef = adminDb.collection('tickets').doc();
-        const qrToken = generateQrToken(ticketRef.id, order.eventId);
-
-        batch.set(ticketRef, {
+        const ticketId = await addDoc('tickets', {
           orderId,
           eventId: order.eventId,
           orgId: order.orgId,
@@ -60,36 +93,27 @@ export async function POST(req: NextRequest) {
           ticketTypeName: item.ticketTypeName,
           holderName: order.buyerName,
           holderEmail: order.buyerEmail,
-          qrToken,
+          qrToken: '',
           status: 'valid',
-          createdAt: FieldValue.serverTimestamp(),
+          createdAt: serverTimestamp(),
         });
 
-        ticketIds.push(ticketRef.id);
+        const qrToken = generateQrToken(ticketId, order.eventId as string);
+        await updateDoc(`tickets/${ticketId}`, { qrToken });
 
-        // update sold count
-        const eventRef = adminDb.doc(`events/${order.eventId}`);
-        const updatedTypes = event.ticketTypes.map((tt: { id: string; sold: number }) =>
-          tt.id === item.ticketTypeId ? { ...tt, sold: tt.sold + 1 } : tt
+        const updatedTypes = ticketTypes.map((tt) =>
+          tt.id === item.ticketTypeId ? { ...tt, sold: (tt.sold || 0) + 1 } : tt
         );
-        await eventRef.update({ ticketTypes: updatedTypes });
+        await updateDoc(`events/${order.eventId}`, { ticketTypes: updatedTypes });
+
+        try {
+          const qrDataUrl = await generateQrDataUrl(ticketId, order.eventId as string);
+          const qrCodeUrl = await uploadQrToStorage(ticketId, qrDataUrl);
+          await updateDoc(`tickets/${ticketId}`, { qrCodeUrl });
+        } catch (qrErr) {
+          console.error('[webhook] QR generation failed for ticket', ticketId, qrErr);
+        }
       }
-    }
-
-    await batch.commit();
-
-    // generate QR images and store URLs
-    for (const ticketId of ticketIds) {
-      const qrDataUrl = await generateQrDataUrl(ticketId, order.eventId);
-      const base64 = qrDataUrl.split(',')[1];
-      const buffer = Buffer.from(base64, 'base64');
-
-      const bucket = adminStorage.bucket();
-      const file = bucket.file(`qr/${ticketId}.png`);
-      await file.save(buffer, { contentType: 'image/png', public: true });
-      const [url] = await file.getSignedUrl({ action: 'read', expires: '01-01-2099' });
-
-      await adminDb.doc(`tickets/${ticketId}`).update({ qrCodeUrl: url });
     }
 
     return NextResponse.json({ received: true });
