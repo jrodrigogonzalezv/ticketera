@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { adminDb } from '@/lib/firebase/admin';
 import type { Event, Organizer } from '@/types';
 import { notFound } from 'next/navigation';
 import EventCheckout from './EventCheckout';
@@ -10,17 +9,19 @@ import { es } from 'date-fns/locale';
 import { MapPin, CalendarDays, Ticket } from 'lucide-react';
 
 async function getEventBySlug(orgSlug: string, eventSlug: string) {
-  const orgsSnap = await getDocs(query(collection(db, 'organizers'), where('slug', '==', orgSlug)));
+  const orgsSnap = await adminDb.collection('organizers').where('slug', '==', orgSlug).get();
   if (orgsSnap.empty) return null;
-  const org = { id: orgsSnap.docs[0].id, ...orgsSnap.docs[0].data() } as Organizer;
+  const organizer = { id: orgsSnap.docs[0].id, ...orgsSnap.docs[0].data() } as Organizer;
 
-  const eventsSnap = await getDocs(
-    query(collection(db, 'events'), where('orgId', '==', org.id), where('slug', '==', eventSlug))
-  );
+  const eventsSnap = await adminDb
+    .collection('events')
+    .where('orgId', '==', organizer.id)
+    .where('slug', '==', eventSlug)
+    .get();
   if (eventsSnap.empty) return null;
   const event = { id: eventsSnap.docs[0].id, ...eventsSnap.docs[0].data() } as Event;
 
-  return { org, event };
+  return { organizer, event };
 }
 
 export default async function EventPublicPage({
@@ -33,15 +34,16 @@ export default async function EventPublicPage({
 
   if (!data || data.event.status !== 'published') notFound();
 
-  const { org, event } = data;
+  const { organizer, event } = data;
   const eventDate = event.date ? new Date((event.date as unknown as { seconds: number }).seconds * 1000) : null;
   const availableTypes = event.ticketTypes.filter((t) => t.sold < t.stock);
+  const eventWithExtra = event as Event & { imageUrl?: string; address?: string };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {event.imageUrl && (
+      {eventWithExtra.imageUrl && (
         <div className="w-full h-72 relative">
-          <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover" />
+          <img src={eventWithExtra.imageUrl} alt={event.title} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
         </div>
       )}
@@ -51,8 +53,10 @@ export default async function EventPublicPage({
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white rounded-2xl p-6 shadow-sm">
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
-                <img src={org.logoUrl || '/favicon.ico'} alt={org.name} className="w-6 h-6 rounded-full" />
-                <span>{org.name}</span>
+                {organizer.logoUrl && (
+                  <img src={organizer.logoUrl} alt={organizer.name} className="w-6 h-6 rounded-full" />
+                )}
+                <span>{organizer.name}</span>
               </div>
               <h1 className="text-3xl font-bold text-gray-900">{event.title}</h1>
 
@@ -65,7 +69,18 @@ export default async function EventPublicPage({
                 )}
                 <span className="flex items-center gap-1.5">
                   <MapPin className="w-4 h-4 text-blue-500" />
-                  {event.venue}, {event.city}
+                  {eventWithExtra.address ? (
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${eventWithExtra.address}, ${event.city}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline"
+                    >
+                      {event.venue} · {eventWithExtra.address}, {event.city}
+                    </a>
+                  ) : (
+                    <span>{event.venue}, {event.city}</span>
+                  )}
                 </span>
               </div>
             </div>
@@ -98,11 +113,12 @@ export async function generateMetadata({ params }: { params: Promise<{ org: stri
   const { org, eventSlug } = await params;
   const data = await getEventBySlug(org, eventSlug);
   if (!data) return {};
+  const e = data.event as Event & { imageUrl?: string };
   return {
-    title: data.event.title,
-    description: data.event.description?.slice(0, 160),
+    title: e.title,
+    description: e.description?.slice(0, 160),
     openGraph: {
-      images: data.event.imageUrl ? [data.event.imageUrl] : [],
+      images: e.imageUrl ? [e.imageUrl] : [],
     },
   };
 }
