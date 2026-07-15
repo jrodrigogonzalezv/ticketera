@@ -8,8 +8,9 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { MapPin, CalendarDays, Ticket as TicketIcon } from 'lucide-react';
 
-export default async function TicketPage({ params }: { params: { id: string } }) {
-  const snap = await adminDb.doc(`tickets/${params.id}`).get();
+export default async function TicketPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const snap = await adminDb.doc(`tickets/${id}`).get();
   if (!snap.exists) notFound();
   const ticket = { id: snap.id, ...snap.data() } as Ticket;
 

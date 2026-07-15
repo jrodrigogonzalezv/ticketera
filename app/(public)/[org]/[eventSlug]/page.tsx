@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import type { Event, Organizer } from '@/types';
@@ -24,9 +26,10 @@ async function getEventBySlug(orgSlug: string, eventSlug: string) {
 export default async function EventPublicPage({
   params,
 }: {
-  params: { org: string; eventSlug: string };
+  params: Promise<{ org: string; eventSlug: string }>;
 }) {
-  const data = await getEventBySlug(params.org, params.eventSlug);
+  const { org, eventSlug } = await params;
+  const data = await getEventBySlug(org, eventSlug);
 
   if (!data || data.event.status !== 'published') notFound();
 
@@ -91,8 +94,9 @@ export default async function EventPublicPage({
   );
 }
 
-export async function generateMetadata({ params }: { params: { org: string; eventSlug: string } }) {
-  const data = await getEventBySlug(params.org, params.eventSlug);
+export async function generateMetadata({ params }: { params: Promise<{ org: string; eventSlug: string }> }) {
+  const { org, eventSlug } = await params;
+  const data = await getEventBySlug(org, eventSlug);
   if (!data) return {};
   return {
     title: data.event.title,

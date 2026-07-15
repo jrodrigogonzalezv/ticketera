@@ -6,7 +6,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { Event } from '@/types';
-import { ArrowLeft, ExternalLink, QrCode, CheckCircle, XCircle, Copy, MapPin } from 'lucide-react';
+import { ArrowLeft, ExternalLink, QrCode, CheckCircle, XCircle, Copy, MapPin, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -81,6 +81,13 @@ export default function EventDetailPage() {
           Volver
         </Link>
         <div className="flex-1" />
+        <Link
+          href={`/events/${id}/edit`}
+          className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          <Pencil className="w-4 h-4" />
+          Editar
+        </Link>
         <button
           onClick={createValidationSession}
           className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
