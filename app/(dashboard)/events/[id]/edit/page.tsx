@@ -214,14 +214,17 @@ export default function EditEventPage() {
               <input
                 type="date"
                 value={form.endDateDay}
+                min={form.dateDay || undefined}
+                disabled={!form.dateDay}
                 onChange={(e) => setForm({ ...form, endDateDay: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
               />
               <input
                 type="time"
                 value={form.endDateTime}
+                disabled={!form.dateDay || !form.endDateDay}
                 onChange={(e) => setForm({ ...form, endDateTime: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
               />
             </div>
           </div>
