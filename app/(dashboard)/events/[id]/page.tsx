@@ -131,14 +131,23 @@ export default function EventDetailPage() {
         </div>
       </div>
 
-      {organizer?.slug && event.slug && (
+      {!organizer?.slug ? (
+        <div className="rounded-xl p-4 mb-6 bg-yellow-50 border border-yellow-200 flex items-center gap-3">
+          <div className="flex-1 text-sm text-yellow-800">
+            Para obtener el link de venta, primero configura tu perfil con un nombre de organizador.
+          </div>
+          <Link href="/settings" className="px-3 py-1.5 text-sm font-medium bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 flex-shrink-0">
+            Ir a Mi perfil
+          </Link>
+        </div>
+      ) : event.slug && (
         <div className={`rounded-xl p-4 mb-6 flex items-center gap-3 ${event.status === 'published' ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200'}`}>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium text-gray-500 mb-0.5">
-              {event.status === 'published' ? 'Link de venta (publicado)' : 'Link de venta (borrador — no visible al público)'}
+              {event.status === 'published' ? 'Link de venta (publicado)' : 'Link de venta (borrador — no visible aún)'}
             </p>
             <p className="text-sm font-mono text-gray-700 truncate">
-              {(process.env.NEXT_PUBLIC_BASE_URL || 'https://ticketera-a15f9.web.app')}/{organizer.slug}/{event.slug}
+              {process.env.NEXT_PUBLIC_BASE_URL || 'https://ticketera-a15f9.web.app'}/{organizer.slug}/{event.slug}
             </p>
           </div>
           <button
