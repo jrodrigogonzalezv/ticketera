@@ -30,11 +30,14 @@ export default function NewEventPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState('');
 
+  const [error, setError] = useState('');
   const [form, setForm] = useState({
     title: '',
     description: '',
-    date: '',
-    endDate: '',
+    dateDay: '',
+    dateTime: '',
+    endDateDay: '',
+    endDateTime: '',
     venue: '',
     city: '',
   });
@@ -67,8 +70,14 @@ export default function NewEventPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!user) return;
-    setLoading(true);
+    setError('');
 
+    if (!form.dateDay || !form.dateTime) {
+      setError('Debes seleccionar fecha y hora de inicio.');
+      return;
+    }
+
+    setLoading(true);
     try {
       let imageUrl = '';
       if (imageFile) {
@@ -78,6 +87,8 @@ export default function NewEventPage() {
       }
 
       const slug = slugify(form.title);
+      const dateStr = `${form.dateDay}T${form.dateTime}`;
+      const endDateStr = form.endDateDay && form.endDateTime ? `${form.endDateDay}T${form.endDateTime}` : null;
 
       await addDoc(collection(db, 'events'), {
         orgId: user.uid,
@@ -85,8 +96,8 @@ export default function NewEventPage() {
         slug,
         description: form.description,
         imageUrl,
-        date: Timestamp.fromDate(new Date(form.date)),
-        endDate: form.endDate ? Timestamp.fromDate(new Date(form.endDate)) : null,
+        date: Timestamp.fromDate(new Date(dateStr)),
+        endDate: endDateStr ? Timestamp.fromDate(new Date(endDateStr)) : null,
         venue: form.venue,
         city: form.city,
         ticketTypes,
@@ -95,9 +106,9 @@ export default function NewEventPage() {
       });
 
       router.push('/events');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Error al crear el evento. Intenta de nuevo.');
+      setError(err?.message || 'Error al crear el evento. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -124,7 +135,7 @@ export default function NewEventPage() {
               required
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               placeholder="Ej: Festival de Verano 2025"
             />
           </div>
@@ -135,29 +146,45 @@ export default function NewEventPage() {
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900"
               placeholder="Describe tu evento..."
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha y hora inicio *</label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha y hora inicio *</label>
+            <div className="grid grid-cols-2 gap-2">
               <input
-                type="datetime-local"
+                type="date"
                 required
-                value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={form.dateDay}
+                onChange={(e) => setForm({ ...form, dateDay: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              />
+              <input
+                type="time"
+                required
+                value={form.dateTime}
+                onChange={(e) => setForm({ ...form, dateTime: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha y hora fin</label>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha y hora fin <span className="text-gray-400 font-normal">(opcional)</span></label>
+            <div className="grid grid-cols-2 gap-2">
               <input
-                type="datetime-local"
-                value={form.endDate}
-                onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                type="date"
+                value={form.endDateDay}
+                onChange={(e) => setForm({ ...form, endDateDay: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              />
+              <input
+                type="time"
+                value={form.endDateTime}
+                onChange={(e) => setForm({ ...form, endDateTime: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               />
             </div>
           </div>
@@ -170,7 +197,7 @@ export default function NewEventPage() {
                 required
                 value={form.venue}
                 onChange={(e) => setForm({ ...form, venue: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                 placeholder="Ej: Club Subterráneo"
               />
             </div>
@@ -181,7 +208,7 @@ export default function NewEventPage() {
                 required
                 value={form.city}
                 onChange={(e) => setForm({ ...form, city: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                 placeholder="Ej: Santiago"
               />
             </div>
@@ -236,7 +263,7 @@ export default function NewEventPage() {
                     required
                     value={ticket.name}
                     onChange={(e) => updateTicketType(ticket.id, 'name', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                     placeholder="General"
                   />
                 </div>
@@ -248,7 +275,7 @@ export default function NewEventPage() {
                     min={0}
                     value={ticket.price}
                     onChange={(e) => updateTicketType(ticket.id, 'price', Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   />
                 </div>
                 <div>
@@ -259,13 +286,19 @@ export default function NewEventPage() {
                     min={1}
                     value={ticket.stock}
                     onChange={(e) => updateTicketType(ticket.id, 'stock', Number(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   />
                 </div>
               </div>
             </div>
           ))}
         </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
+            {error}
+          </div>
+        )}
 
         <div className="flex gap-3">
           <Link href="/events" className="flex-1 py-2.5 border border-gray-300 rounded-lg text-center font-medium text-gray-700 hover:bg-gray-50 transition-colors">
