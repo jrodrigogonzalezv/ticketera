@@ -6,7 +6,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { Event } from '@/types';
-import { ArrowLeft, ExternalLink, QrCode, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, ExternalLink, QrCode, CheckCircle, XCircle, Copy, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -18,6 +18,7 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -34,6 +35,15 @@ export default function EventDetailPage() {
     await updateDoc(doc(db, 'events', event.id), { status: newStatus });
     setEvent({ ...event, status: newStatus });
     setPublishing(false);
+  }
+
+  async function copyPublicLink() {
+    if (!organizer?.slug || !event?.slug) return;
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
+    const url = `${baseUrl}/${organizer.slug}/${event.slug}`;
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   async function createValidationSession() {
@@ -99,24 +109,55 @@ export default function EventDetailPage() {
         <img src={event.imageUrl} alt={event.title} className="w-full h-56 object-cover rounded-xl mb-6" />
       )}
 
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{event.title}</h1>
-          {eventDate && (
-            <p className="text-gray-500 mt-1">{format(eventDate, "EEEE d 'de' MMMM yyyy · HH:mm", { locale: es })}</p>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">{event.title}</h1>
+        {eventDate && (
+          <p className="text-gray-500 mt-1">{format(eventDate, "EEEE d 'de' MMMM yyyy · HH:mm", { locale: es })}</p>
+        )}
+        <div className="flex items-center gap-1 text-gray-500 mt-0.5">
+          <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+          {event.address ? (
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${event.address}, ${event.city}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-blue-600 hover:underline"
+            >
+              {event.venue} · {event.address}, {event.city}
+            </a>
+          ) : (
+            <span>{event.venue} · {event.city}</span>
           )}
-          <p className="text-gray-500">{event.venue} · {event.city}</p>
         </div>
-        {organizer?.slug && event.slug && (
+      </div>
+
+      {organizer?.slug && event.slug && (
+        <div className={`rounded-xl p-4 mb-6 flex items-center gap-3 ${event.status === 'published' ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200'}`}>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-gray-500 mb-0.5">
+              {event.status === 'published' ? 'Link de venta (publicado)' : 'Link de venta (borrador — no visible al público)'}
+            </p>
+            <p className="text-sm font-mono text-gray-700 truncate">
+              {(process.env.NEXT_PUBLIC_BASE_URL || 'https://ticketera-a15f9.web.app')}/{organizer.slug}/{event.slug}
+            </p>
+          </div>
+          <button
+            onClick={copyPublicLink}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg hover:bg-white transition-colors flex-shrink-0"
+          >
+            <Copy className="w-3.5 h-3.5" />
+            {copied ? '¡Copiado!' : 'Copiar'}
+          </button>
           <Link
             href={`/${organizer.slug}/${event.slug}`}
             target="_blank"
-            className="flex items-center gap-1 text-sm text-blue-600 hover:underline"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg hover:bg-white transition-colors flex-shrink-0"
           >
-            Ver página pública <ExternalLink className="w-3.5 h-3.5" />
+            <ExternalLink className="w-3.5 h-3.5" />
+            Abrir
           </Link>
-        )}
-      </div>
+        </div>
+      )}
 
       {event.description && (
         <p className="text-gray-600 mb-6 bg-gray-50 rounded-lg p-4">{event.description}</p>

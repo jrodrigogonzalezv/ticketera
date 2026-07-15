@@ -32,6 +32,7 @@ export interface Event {
   date: Date;
   endDate?: Date;
   venue: string;
+  address?: string;
   city: string;
   ticketTypes: TicketType[];
   status: 'draft' | 'published' | 'cancelled' | 'finished';

@@ -39,6 +39,7 @@ export default function NewEventPage() {
     endDateDay: '',
     endDateTime: '',
     venue: '',
+    address: '',
     city: '',
   });
 
@@ -77,6 +78,15 @@ export default function NewEventPage() {
       return;
     }
 
+    if (form.endDateDay && form.endDateTime) {
+      const start = new Date(`${form.dateDay}T${form.dateTime}`);
+      const end = new Date(`${form.endDateDay}T${form.endDateTime}`);
+      if (end <= start) {
+        setError('La fecha de término debe ser posterior a la fecha de inicio.');
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       let imageUrl = '';
@@ -90,7 +100,7 @@ export default function NewEventPage() {
       const dateStr = `${form.dateDay}T${form.dateTime}`;
       const endDateStr = form.endDateDay && form.endDateTime ? `${form.endDateDay}T${form.endDateTime}` : null;
 
-      await addDoc(collection(db, 'events'), {
+      const docRef = await addDoc(collection(db, 'events'), {
         orgId: user.uid,
         title: form.title,
         slug,
@@ -99,13 +109,14 @@ export default function NewEventPage() {
         date: Timestamp.fromDate(new Date(dateStr)),
         endDate: endDateStr ? Timestamp.fromDate(new Date(endDateStr)) : null,
         venue: form.venue,
+        address: form.address,
         city: form.city,
         ticketTypes,
         status: 'draft',
         createdAt: serverTimestamp(),
       });
 
-      router.push('/events');
+      router.push(`/events/${docRef.id}`);
     } catch (err: any) {
       console.error(err);
       setError(err?.message || 'Error al crear el evento. Intenta de nuevo.');
@@ -212,6 +223,18 @@ export default function NewEventPage() {
                 placeholder="Ej: Santiago"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Dirección <span className="text-gray-400 font-normal">(opcional)</span></label>
+            <input
+              type="text"
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              placeholder="Ej: Loreto 29, Providencia"
+            />
+            <p className="text-xs text-gray-400 mt-1">Se mostrará un enlace a Google Maps en la página del evento.</p>
           </div>
 
           <div>
