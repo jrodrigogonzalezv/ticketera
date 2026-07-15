@@ -58,9 +58,4 @@ jobs:
           gcloud run services update "$SERVICE" \
             --project=ticketera-a15f9 \
             --region=us-central1 \
-            --set-env-vars "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }},FIREBASE_CLIENT_EMAIL=${{ secrets.FIREBASE_CLIENT_EMAIL }},MP_CLIENT_ID=${{ secrets.MP_CLIENT_ID }},MP_CLIENT_SECRET=${{ secrets.MP_CLIENT_SECRET }},MP_PLATFORM_ACCESS_TOKEN=${{ secrets.MP_PLATFORM_ACCESS_TOKEN }},NEXT_PUBLIC_BASE_URL=${{ secrets.NEXT_PUBLIC_BASE_URL }},SERVICE_FEE_PERCENT=${{ secrets.SERVICE_FEE_PERCENT }},QR_HMAC_SECRET=${{ secrets.QR_HMAC_SECRET }},VALIDATION_SESSION_SECRET=${{ secrets.VALIDATION_SESSION_SECRET }}" \
-            --update-secrets "FIREBASE_PRIVATE_KEY=FIREBASE_PRIVATE_KEY:latest" 2>/dev/null || \
-          gcloud run services update "$SERVICE" \
-            --project=ticketera-a15f9 \
-            --region=us-central1 \
-            --set-env-vars "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }},FIREBASE_CLIENT_EMAIL=${{ secrets.FIREBASE_CLIENT_EMAIL }},FIREBASE_PRIVATE_KEY=${{ secrets.FIREBASE_PRIVATE_KEY }},MP_CLIENT_ID=${{ secrets.MP_CLIENT_ID }},MP_CLIENT_SECRET=${{ secrets.MP_CLIENT_SECRET }},MP_PLATFORM_ACCESS_TOKEN=${{ secrets.MP_PLATFORM_ACCESS_TOKEN }},NEXT_PUBLIC_BASE_URL=${{ secrets.NEXT_PUBLIC_BASE_URL }},SERVICE_FEE_PERCENT=${{ secrets.SERVICE_FEE_PERCENT }},QR_HMAC_SECRET=${{ secrets.QR_HMAC_SECRET }},VALIDATION_SESSION_SECRET=${{ secrets.VALIDATION_SESSION_SECRET }}"
+            --set-env-vars "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }},FIREBASE_CLIENT_EMAIL=${{ secrets.FIREBASE_CLIENT_EMAIL }},MP_CLIENT_ID=${{ secrets.MP_CLIENT_ID }},MP_CLIENT_SECRET=${{ secrets.MP_CLIENT_SECRET }},MP_PLATFORM_ACCESS_TOKEN=${{ secrets.MP_PLATFORM_ACCESS_TOKEN }},NEXT_PUBLIC_BASE_URL=${{ secrets.NEXT_PUBLIC_BASE_URL }},SERVICE_FEE_PERCENT=${{ secrets.SERVICE_FEE_PERCENT }},QR_HMAC_SECRET=${{ secrets.QR_HMAC_SECRET }},VALIDATION_SESSION_SECRET=${{ secrets.VALIDATION_SESSION_SECRET }}"
