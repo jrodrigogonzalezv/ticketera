@@ -18,10 +18,10 @@ jobs:
 
       - run: npm ci
 
-      - name: Deploy Firestore & Storage rules
+      - name: Deploy Firestore rules
         run: |
           echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > /tmp/sa.json
-          GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json npx firebase-tools deploy --only firestore:rules,storage --project ticketera-a15f9 --non-interactive
+          GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json npx firebase-tools deploy --only firestore:rules --project ticketera-a15f9 --non-interactive
           rm /tmp/sa.json
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
