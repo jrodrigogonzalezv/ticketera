@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     });
 
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message);
+    if (!res.ok) throw new Error(data.message || JSON.stringify(data));
 
     await updateDoc(`organizers/${orgId}`, {
       mpAccessToken: data.access_token,
@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/settings?mp=success`);
   } catch (err) {
     console.error('[mp/callback]', err);
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/settings?mp=error`);
+    const reason = err instanceof Error ? err.message : 'unknown';
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/settings?mp=error&reason=${encodeURIComponent(reason)}`);
   }
 }
